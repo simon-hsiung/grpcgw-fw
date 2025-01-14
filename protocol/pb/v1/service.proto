@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package pb;
+
+import "buf/validate/validate.proto";
+import "google/api/annotations.proto";
+import "google/api/httpbody.proto";
+
+option go_package = "main/pb/v1;pb";
+
+service SampleService {
+  rpc RetrieveSampleData(SampleRequest) returns (SampleResponse) {
+    option (google.api.http) = {
+      post: "/v1/sample/data"
+      body: "*"
+    };
+  }
+
+  rpc StreamDownload(StreamRequest) returns (stream StreamResponse) {
+    option (google.api.http) = {
+      post: "/v1/sample/stream/{seed}"
+      body: "*"
+    };
+  }
+
+  rpc StreamDownloadHttp(StreamRequest) returns (stream google.api.HttpBody) {
+    option (google.api.http) = {
+      post: "/v1/sample/stream/http/{seed}"
+      body: "*"
+    };
+  }
+
+  rpc StreamUploadHttp(stream google.api.HttpBody) returns (SampleResponse) {
+    option (google.api.http) = {
+      post: "/v1/sample/stream/upload/http"
+      body: "*"
+    };
+  }
+}
+
+message SampleRequest {
+  string guid = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_UNPOPULATED,
+    (buf.validate.field).string.uuid = true
+  ];
+  int32 id = 2 [(buf.validate.field).int32.gte = 0];
+
+  // cannot specify both
+  option (buf.validate.message).cel = {
+    id: "SampleRequest.allow_only_one_of"
+    message: "cannot specify both guid and id"
+    expression: "this.guid == '' || this.id == 0"
+  };
+}
+
+message SampleResponse {
+  string data = 1;
+}
+
+message StreamRequest {
+  int64 seed = 1;
+  int32 iteration = 2;
+  int32 section_length = 3;
+}
+
+message StreamResponse {
+  bytes payload = 1;
+}
